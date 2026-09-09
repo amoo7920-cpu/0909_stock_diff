@@ -24,15 +24,18 @@ interface DashboardTabProps {
 
 export default function DashboardTab({ items, selectedDate }: DashboardTabProps) {
   // ==========================================
-  // HIERARCHICAL DISCREPANCY PARTITIONING
+  // HIERARCHICAL DISCREPANCY PARTITIONING (EXCLUDING SLOC 2900)
   // ==========================================
   
+  // Filter out Storage Location (SLoc) 2900 as explicitly requested by user
+  const displayItems = items.filter(item => item.sloc !== '2900');
+
   // Priority 1: SLoc Quantity Difference (WMS Total Qty != ERP Total Qty)
-  const qtyDiscrepancies = items.filter(item => Math.abs(item.netDiff) > 0.001);
+  const qtyDiscrepancies = displayItems.filter(item => Math.abs(item.netDiff) > 0.001);
   const qtyKeys = new Set(qtyDiscrepancies.map(item => item.key));
 
   // Priority 2: Material Type Difference (Exclude Priority 1)
-  const typeDiscrepancies = items.filter(item => {
+  const typeDiscrepancies = displayItems.filter(item => {
     if (qtyKeys.has(item.key)) return false;
     if (!item.materialTypeDiff) return false;
     return (
@@ -43,7 +46,7 @@ export default function DashboardTab({ items, selectedDate }: DashboardTabProps)
   const typeKeys = new Set(typeDiscrepancies.map(item => item.key));
 
   // Priority 3: Quality Status Difference (Exclude Priority 1 & 2)
-  const qualityDiscrepancies = items.filter(item => {
+  const qualityDiscrepancies = displayItems.filter(item => {
     if (qtyKeys.has(item.key) || typeKeys.has(item.key)) return false;
     if (!item.qualityDiff) return false;
     return (
@@ -113,6 +116,53 @@ export default function DashboardTab({ items, selectedDate }: DashboardTabProps)
       .filter(([date, text]) => date !== selectedDate && typeof text === 'string' && text.trim() !== '')
       .map(([date, text]) => ({ date, text: text as string }))
       .sort((a, b) => b.date.localeCompare(a.date)); // Latest date first
+  };
+
+  // Helper to render the inline comment right on the card for quick viewing
+  const renderDiscrepancyComment = (item: ReconciledItem) => {
+    const todayReason = reasons[item.material]?.[selectedDate] || '';
+    const prevCauses = getPreviousReasons(item.material);
+    const hasInTransit = item.inTransitRecords && item.inTransitRecords.length > 0;
+
+    let commentText = '';
+    let badgeStyle = '';
+    let label = '';
+
+    if (todayReason.trim()) {
+      label = "금일 사유";
+      commentText = todayReason;
+      badgeStyle = "bg-blue-50 border-blue-200 text-blue-800";
+    } else if (hasInTransit) {
+      label = "자동 분석";
+      commentText = "이송중 재고";
+      badgeStyle = "bg-emerald-50 border-emerald-200 text-emerald-800 font-extrabold";
+    } else if (prevCauses.length > 0) {
+      label = `과거 연동 (${prevCauses[0].date})`;
+      commentText = prevCauses[0].text;
+      badgeStyle = "bg-amber-50 border-amber-200 text-amber-800";
+    } else {
+      label = "조치 필요";
+      commentText = "사유 미등록";
+      badgeStyle = "bg-slate-50 border-slate-100 text-slate-400 italic";
+    }
+
+    return (
+      <div className={`mt-2 px-2.5 py-1.5 rounded-lg border text-[11px] flex items-center justify-between gap-2 shadow-2xs ${badgeStyle}`}>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="font-extrabold text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/80 shrink-0 border border-current/10 whitespace-nowrap">
+            {label}
+          </span>
+          <span className="truncate font-semibold text-slate-700">
+            {commentText}
+          </span>
+        </div>
+        {hasInTransit && (
+          <span className="text-[9px] font-extrabold bg-emerald-600 text-white px-1.5 py-0.2 rounded-full shrink-0 whitespace-nowrap">
+            이송중 {item.inTransitRecords[0].qty.toLocaleString()}
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -196,6 +246,9 @@ export default function DashboardTab({ items, selectedDate }: DashboardTabProps)
                         </button>
                       </div>
                     </div>
+
+                    {/* Always visible discrepancy comment */}
+                    {renderDiscrepancyComment(item)}
 
                     {/* Expandable Reason Input and History Panel */}
                     {isExpanded && (
@@ -307,6 +360,9 @@ export default function DashboardTab({ items, selectedDate }: DashboardTabProps)
                         </button>
                       </div>
                     </div>
+
+                    {/* Always visible discrepancy comment */}
+                    {renderDiscrepancyComment(item)}
 
                     {/* Expandable Reason Input and History Panel */}
                     {isExpanded && (
@@ -427,6 +483,9 @@ export default function DashboardTab({ items, selectedDate }: DashboardTabProps)
                         </button>
                       </div>
                     </div>
+
+                    {/* Always visible discrepancy comment */}
+                    {renderDiscrepancyComment(item)}
 
                     {/* Expandable Reason Input and History Panel */}
                     {isExpanded && (
