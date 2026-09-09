@@ -1,0 +1,6 @@
+{
+  "name": "WMS-ERP 재고 차이 분석 시스템",
+  "description": "WMS와 ERP 간의 일자별 재고수량, 품질상태, 자재구분 차이를 분석하고 이송중 재고를 매핑하여 지능적으로 불일치를 자동 소명하는 전문 재고조정 및 모니터링 시스템입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
